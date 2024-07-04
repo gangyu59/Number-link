@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const touch = event.touches ? event.touches[0] : event;
     if (!touch) return;
     const { row, col } = getCellCoordinates(touch);
-    if (grid[row][col] !== null) {
+    if (grid[row][col] !== undefined) {
       startNode = { row, col, value: grid[row][col] };
       currentLine = [{ row, col }];
       colorIndex = (colorIndex + 1) % colors.length;
@@ -126,9 +126,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!startNode) return;
     const touch = event.changedTouches ? event.changedTouches[0] : event;
     const { row, col } = getCellCoordinates(touch);
-    const endNode = { row, col, value: grid[row][col] };
-
-    if (startNode.value === endNode.value && !isLineOverlapping(currentLine)) {
+    if (row >= 0 && row < gridSize && col >= 0 && col < gridSize) {
+      const endNode = { row, col, value: grid[row][col] };
       lines.push({ color: colors[colorIndex], path: currentLine });
       moveCount += currentLine.length;
       moveCounter.textContent = `步数 = ${moveCount}`;
@@ -152,18 +151,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function isValidMove(from, to) {
     if (to.row < 0 || to.row >= gridSize || to.col < 0 || to.col >= gridSize) return false;
     if (Math.abs(from.row - to.row) + Math.abs(from.col - to.col) !== 1) return false;
-    if (currentLine.some(node => node.row === to.row && node.col === to.col)) return false;
     return true;
-  }
-
-  function isLineOverlapping(line) {
-    for (let i = 1; i < line.length; i++) {
-      const node = line[i];
-      if (grid[node.row][node.col] !== null && grid[node.row][node.col] !== startNode.value) {
-        return true;
-      }
-    }
-    return false;
   }
 
   function drawCurrentLine() {
@@ -185,35 +173,38 @@ document.addEventListener("DOMContentLoaded", function () {
     const totalPairs = difficulties[difficultySlider.value].pairs.length;
     const completedPairs = lines.length;
 
-    if (completedPairs === totalPairs) {
-      const allCellsCovered = grid.every((row, rowIndex) =>
-        row.every((cell, colIndex) =>
-          cell !== null || lines.some(line =>
-            line.path.some(node =>
-              node.row === rowIndex && node.col === colIndex
-            )
+    // 检查所有数字对是否连接
+    const allPairsConnected = completedPairs === totalPairs;
+
+    // 检查所有空格是否被画线经过
+    const allCellsCovered = grid.every((row, rowIndex) =>
+      row.every((cell, colIndex) =>
+        cell !== null || lines.some(line =>
+          line.path.some(node =>
+            node.row === rowIndex && node.col === colIndex
           )
         )
-      );
+      )
+    );
 
-      const noCrossingLines = !lines.some((line1, index1) =>
-        lines.some((line2, index2) => {
-          if (index1 === index2) return false;
-          return line1.path.some(point1 =>
-            line2.path.some(point2 =>
-              point1.row === point2.row && point1.col === point2.col
-            )
-          );
-        })
-      );
+    // 检查是否有交叉画线
+    const noCrossingLines = !lines.some((line1, index1) =>
+      lines.some((line2, index2) => {
+        if (index1 === index2) return false;
+        return line1.path.some(point1 =>
+          line2.path.some(point2 =>
+            point1.row === point2.row && point1.col === point2.col && index1 !== index2
+          )
+        );
+      })
+    );
 
-      if (allCellsCovered && noCrossingLines) {
-        message.textContent = "恭喜成功！";
-        message.style.color = "green";
-      } else {
-        message.textContent = "失败了，再来一次，加油！";
-        message.style.color = "red";
-      }
+    if (allPairsConnected && allCellsCovered && noCrossingLines) {
+      message.textContent = "恭喜成功！";
+      message.style.color = "green";
+    } else {
+      message.textContent = "失败了，再来一次，加油！";
+      message.style.color = "red";
     }
   }
 
