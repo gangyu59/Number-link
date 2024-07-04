@@ -69,8 +69,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const { row, col } = getCellCoordinates(touch, cellSize, ctx);
         const lastNode = currentLine[currentLine.length - 1];
 
-        currentLine.push({ row, col });
-        drawGrid(ctx, gridSize, cellSize, lines, grid, currentLine, colors, colorIndex);
+        if (Math.abs(lastNode.row - row) + Math.abs(lastNode.col - col) === 1) {
+            currentLine.push({ row, col });
+            drawGrid(ctx, gridSize, cellSize, lines, grid, currentLine, colors, colorIndex);
+        }
     }
 
     function handleTouchEnd(event) {
@@ -79,25 +81,47 @@ document.addEventListener("DOMContentLoaded", function () {
         const { row, col } = getCellCoordinates(touch, cellSize, ctx);
         const endNode = { row, col, value: grid[row][col] };
 
-        lines.push({ color: colors[colorIndex], path: currentLine });
-        moveCount += currentLine.length;
-        moveCounter.textContent = `步数 = ${moveCount}`;
-        if (checkWinCondition(grid, lines, difficulties[difficultySlider.value].pairs.length)) {
-            message.textContent = "恭喜成功！";
-            message.style.color = "green";
+        if (startNode.value === endNode.value) {
+            lines.push({ color: colors[colorIndex], path: currentLine });
+            moveCount += currentLine.length;
+            moveCounter.textContent = `步数 = ${moveCount}`;
+            startNode = null;
+            currentLine = [];
+            drawGrid(ctx, gridSize, cellSize, lines, grid, currentLine, colors, colorIndex);
+            checkIfAllLinesDrawn();
         } else {
-            message.textContent = "失败了，再来一次，加油！";
-            message.style.color = "red";
+            startNode = null;
+            currentLine = [];
+            drawGrid(ctx, gridSize, cellSize, lines, grid, currentLine, colors, colorIndex);
         }
+    }
 
-        startNode = null;
-        currentLine = [];
-        drawGrid(ctx, gridSize, cellSize, lines, grid, currentLine, colors, colorIndex);
+    function checkIfAllLinesDrawn() {
+        const totalPairs = difficulties[difficultySlider.value].pairs.length;
+        if (lines.length === totalPairs) {
+            const allCellsCovered = grid.every((row, rowIndex) =>
+                row.every((cell, colIndex) =>
+                    cell !== null || lines.some(line =>
+                        line.path.some(node =>
+                            node.row === rowIndex && node.col === colIndex
+                        )
+                    )
+                )
+            );
+
+            if (checkWinCondition(grid, lines, totalPairs) && allCellsCovered) {
+                message.textContent = "恭喜成功！";
+                message.style.color = "green";
+            } else {
+                message.textContent = "失败了，再来一次，加油！";
+                message.style.color = "red";
+            }
+        }
     }
 
     canvas.addEventListener("touchstart", handleTouchStart);
     canvas.addEventListener("touchmove", handleTouchMove);
     canvas.addEventListener("touchend", handleTouchEnd);
 
-    initializeGame(1); // Initialize with default difficulty
+    initializeGame(3); // Initialize with default difficulty
 });
